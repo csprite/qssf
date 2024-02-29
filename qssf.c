@@ -39,7 +39,6 @@ static inline void Write_32(uint8_t* out, uint32_t* pos, uint32_t val) {
 	out[(*pos)++] = (val & 0xFF000000) >> 24;
 }
 
-#include <stdio.h>
 int QSSF_ImageEncode(const struct QSSF_Image* img, uint8_t** outData, uint32_t* outSize) {
 	uint32_t maxSize = (img->width * img->height * img->comp) + 100;
 	uint32_t pos = 0;
@@ -97,7 +96,7 @@ int QSSF_ImageAddLayer(struct QSSF_Image* img, const char* name, uint8_t opacity
 	layer->opacity = opacity;
 	layer->blend = blend;
 	layer->name = malloc(strlen(name) + 1);
-	strncpy(layer->name, name, strlen(name));
+	strncpy(layer->name, name, strlen(name) + 1);
 
 	return 0;
 }
