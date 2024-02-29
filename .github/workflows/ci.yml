@@ -1,0 +1,32 @@
+name: ci
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Deps (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        choco install make mingw
+
+    - name: Build & Run (Linux or Mac)
+      if: ${{ matrix.os != 'windows-latest' }}
+      env:
+        CC: "${{ matrix.os == 'macos-latest' && 'clang' || 'gcc' }}"
+      run: |
+        make all run BUILD_TYPE=Release
+
+    - name: Generate Build Files & Build (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        mingw32-make all run BUILD_TYPE=Release
+
