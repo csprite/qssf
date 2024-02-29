@@ -6,6 +6,10 @@ extern "C" {
 
 #include <stdint.h>
 
+#define QSSF_HEADER_SIZE 13
+#define QSSF_MAGIC \
+	(((unsigned int)'q') << 24 | ((unsigned int)'s') << 16 | ((unsigned int)'s') <<  8 | ((unsigned int)'f'))
+
 enum QSSF_ImageComp {
 	QSSF_IMAGE_COMP_RGB = 3,
 	QSSF_IMAGE_COMP_RGBA = 4
@@ -33,7 +37,7 @@ struct QSSF_Image {
 typedef uint8_t* (*QSSF_EncodePng_CB)(uint32_t width, uint32_t height, uint8_t numChannels, uint8_t* pixel_data);
 typedef uint8_t* (*QSSF_DecodePng_CB)(uint32_t* width, uint32_t* height, uint8_t* numChannels, const uint8_t* png_data);
 
-int QSSF_ImageDecode(struct QSSF_Image* img, const uint8_t* outData, uint32_t outSize);
+int QSSF_ImageDecode(struct QSSF_Image* img, const uint8_t* inData, uint32_t inSize);
 
 int QSSF_ImageAddLayer(struct QSSF_Image* img, const char* name, uint8_t opacity, enum QSSF_LayerBlend blend);
 void QSSF_ImageFreeLayer(struct QSSF_Layer* layer);
