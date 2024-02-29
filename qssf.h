@@ -19,6 +19,7 @@ struct QSSF_Layer {
 	char* name;
 	uint8_t opacity;
 	enum QSSF_LayerBlend blend;
+	uint8_t* pixels;
 };
 
 struct QSSF_Image {
@@ -29,8 +30,19 @@ struct QSSF_Image {
 	struct QSSF_Layer* layers;
 };
 
+typedef uint8_t* (*QSSF_EncodePng_CB)(uint32_t width, uint32_t height, uint8_t numChannels, uint8_t* pixel_data);
+typedef uint8_t* (*QSSF_DecodePng_CB)(uint32_t* width, uint32_t* height, uint8_t* numChannels, const uint8_t* png_data);
+
+int QSSF_ImageDecode(struct QSSF_Image* img, const uint8_t* outData, uint32_t outSize);
+
+int QSSF_ImageAddLayer(struct QSSF_Image* img, const char* name, uint8_t opacity, enum QSSF_LayerBlend blend);
+void QSSF_ImageFreeLayer(struct QSSF_Layer* layer);
+
+int QSSF_ImageEncode(const struct QSSF_Image* img, uint8_t** outData, uint32_t* outSize);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif // !QSSF_H_INCLUDED_
+

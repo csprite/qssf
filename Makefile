@@ -6,7 +6,7 @@ BUILD      := build
 BUILD_TYPE := Debug
 BIN        := $(BUILD)/qssfbin
 
-SOURCES    := src/main.c src/impl.c
+SOURCES    := src/main.c src/impl.c qssf.c
 OBJECTS    := $(SOURCES:.c=.c.o)
 OBJECTS    := $(patsubst %,$(BUILD)/%,$(OBJECTS))
 DEPENDS    := $(OBJECTS:.o=.d)
