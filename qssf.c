@@ -39,8 +39,12 @@ static inline void Write_32(uint8_t* out, uint32_t* pos, uint32_t val) {
 	out[(*pos)++] = (val & 0xFF000000) >> 24;
 }
 
-int QSSF_ImageEncode(const struct QSSF_Image* img, uint8_t** outData, uint32_t* outSize) {
-	uint32_t maxSize = (img->width * img->height * img->comp) + 100;
+int QSSF_ImageEncode(const struct QSSF_Image* img, uint8_t** outData, uint32_t* outSize, QSSF_EncodePng_CB encode) {
+	if (img->width < 1 || img->height < 1 || img->numLayers < 1 || encode == NULL) {
+		return 1;
+	}
+
+	uint32_t maxSize = (img->width * img->height * img->comp) + QSSF_HEADER_SIZE;
 	uint32_t pos = 0;
 
 	*outData = malloc(maxSize);
@@ -50,6 +54,41 @@ int QSSF_ImageEncode(const struct QSSF_Image* img, uint8_t** outData, uint32_t* 
 	Write_32(*outData, &pos, img->height);
 	Write_8(*outData, &pos, img->comp);
 	Write_32(*outData, &pos, img->numLayers);
+
+	for (uint32_t i = 0; i < img->numLayers; i++) {
+		struct QSSF_Layer* layer = &img->layers[i];
+		uint32_t nameLen = strlen(layer->name);
+
+		uint8_t* pngRaw = NULL;
+		uint32_t pngRawSize = 0;
+		if (
+			encode(img->width, img->height, img->comp, layer->pixels, &pngRaw, &pngRawSize) != 0 ||
+			pngRawSize < 1 || pngRaw == NULL
+		) {
+			free(*outData);
+			*outData = NULL;
+			return 1;
+		}
+
+		if (maxSize < (pos + (pngRawSize + 1) + (nameLen + 1) + 2 + 4)) {
+			maxSize += (pngRawSize + 1) + nameLen + 2 + 4;
+			*outData = realloc(*outData, maxSize);
+		}
+
+		for (uint32_t j = 0; j < nameLen + 1; j++) {
+			Write_8(*outData, &pos, (uint8_t)layer->name[j]);
+		}
+		Write_8(*outData, &pos, '\0'); // NULL Terminate
+
+		Write_8(*outData, &pos, layer->blend);
+		Write_8(*outData, &pos, layer->opacity);
+		Write_32(*outData, &pos, pngRawSize);
+
+		for (uint32_t j = 0; j < pngRawSize; j++) {
+			Write_8(*outData, &pos, pngRaw[j]);
+		}
+		free(pngRaw);
+	}
 
 	*outData = realloc(*outData, pos);
 	*outSize = pos;
@@ -79,7 +118,32 @@ int QSSF_ImageDecode(struct QSSF_Image* outImg, const uint8_t* inData, uint32_t 
 	outImg->width = width;
 	outImg->height = height;
 	outImg->comp = comp;
-	outImg->numLayers = numLayers;
+	outImg->numLayers = 0;
+
+	for (uint32_t i = 0; i < numLayers; i++) {
+		uint32_t len;
+		for (len = 0; pos + len < inSize; len++) {
+			if (*(inData + pos + len) == 0) {
+				break;
+			}
+		}
+		if (pos + len + 1 >= inSize) {
+			return 1;
+		}
+
+		char* name = malloc(len + 1);
+		strncpy(name, (char*)inData + pos + len, len + 1);
+		pos += len + 1;
+
+		uint8_t blend = Read_8(inData, &pos);
+		uint8_t opacity = Read_8(inData, &pos);
+		uint32_t pngRawSize = Read_32(inData, &pos);
+
+		pos += pngRawSize;
+
+		QSSF_ImageAddLayer(outImg, name, opacity, blend);
+		free(name);
+	}
 
 	return 0;
 }
@@ -102,10 +166,24 @@ int QSSF_ImageAddLayer(struct QSSF_Image* img, const char* name, uint8_t opacity
 }
 
 void QSSF_ImageFreeLayer(struct QSSF_Layer* layer) {
-	free(layer->name);
-	layer->name = NULL;
+	if (layer->name != NULL) {
+		free(layer->name);
+		layer->name = NULL;
+	}
 
-	free(layer->pixels);
-	layer->pixels = NULL;
+	if (layer->pixels != NULL) {
+		free(layer->pixels);
+		layer->pixels = NULL;
+	}
+}
+
+void QSSF_ImageDestroy(struct QSSF_Image* img) {
+	if (img->layers != NULL) {
+		for (uint32_t i = 0; i < img->numLayers; i++) {
+			QSSF_ImageFreeLayer(&img->layers[i]);
+		}
+		free(img->layers);
+	}
+	memset(img, 0, sizeof(*img));
 }
 
